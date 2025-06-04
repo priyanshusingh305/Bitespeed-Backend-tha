@@ -69,7 +69,7 @@ export default function ContactIdentifyApp() {
   const fetchAllContacts = async (page = 1) => {
     try {
       const response = await fetch(
-        `http://localhost:3500/getall?page=${page}&limit=${pageLimit}`
+        `${process.env.NEXT_PUBLIC_API_URL}/getall?page=${page}&limit=${pageLimit}`
       );
       if (response.ok) {
         const data: ContactsResponse = await response.json();
@@ -95,7 +95,7 @@ export default function ContactIdentifyApp() {
     }
 
     try {
-      const response = await fetch("http://localhost:3500/identify", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/identify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
