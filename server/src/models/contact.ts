@@ -1,6 +1,11 @@
-import { pgTable, serial, varchar, timestamp, integer } from "drizzle-orm/pg-core";
+import {
+	pgTable,
+	serial,
+	varchar,
+	timestamp,
+	integer,
+} from "drizzle-orm/pg-core";
 
-// Contacts table
 export const contacts = pgTable("contacts", {
 	id: serial("id").primaryKey(),
 	phoneNumber: varchar("phone_number", { length: 20 }),
@@ -12,7 +17,6 @@ export const contacts = pgTable("contacts", {
 	deletedAt: timestamp("deleted_at"),
 });
 
-// Types for TypeScript
 export type Contact = typeof contacts.$inferSelect;
 export type NewContact = typeof contacts.$inferInsert;
 

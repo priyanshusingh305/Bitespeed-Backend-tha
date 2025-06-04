@@ -1,8 +1,8 @@
 import express from "express";
-import identifyContact from "./contact";
+import contactRouter from "./contact";
 
 const router = express.Router();
 
-router.post("/", identifyContact);
+router.use("/", contactRouter);
 
 export default router;

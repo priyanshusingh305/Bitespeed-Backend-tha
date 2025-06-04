@@ -1,7 +1,7 @@
 import { db } from "../db";
 import { contacts } from "../models/contact";
 import type { Contact, LinkPrecedence } from "../models/contact";
-import { eq, or, and, isNull } from "drizzle-orm";
+import { eq, or, and, isNull, desc, count } from "drizzle-orm";
 
 interface ConsolidatedContact {
 	primaryContatctId: number;
@@ -11,39 +11,74 @@ interface ConsolidatedContact {
 }
 
 export const ContactService = {
-	async identifyAndConsolidateContact(email?: string, phoneNumber?: string): Promise<ConsolidatedContact> {
-		const existingContacts = await ContactService.findExistingContacts(email, phoneNumber);
+	async identifyAndConsolidateContact(
+		email?: string,
+		phoneNumber?: string,
+	): Promise<ConsolidatedContact> {
+		const existingContacts = await ContactService.findExistingContacts(
+			email,
+			phoneNumber,
+		);
 
 		let primaryContact: Contact;
 		let allRelatedContacts: Contact[] = [];
 
 		if (existingContacts.length === 0) {
-			primaryContact = await ContactService.createNewPrimaryContact(email, phoneNumber);
+			primaryContact = await ContactService.createNewPrimaryContact(
+				email,
+				phoneNumber,
+			);
 			allRelatedContacts = [primaryContact];
 		} else if (existingContacts.length === 1) {
 			const existingContact = existingContacts[0];
 
-			const needsSecondaryContact = ContactService.needsSecondaryContact(existingContact, email, phoneNumber);
+			const needsSecondaryContact = ContactService.needsSecondaryContact(
+				existingContact,
+				email,
+				phoneNumber,
+			);
 
 			if (needsSecondaryContact) {
-				primaryContact = await ContactService.findPrimaryContact(existingContact);
+				primaryContact =
+					await ContactService.findPrimaryContact(existingContact);
 
-				await ContactService.createSecondaryContact(email, phoneNumber, primaryContact.id);
+				await ContactService.createSecondaryContact(
+					email,
+					phoneNumber,
+					primaryContact.id,
+				);
 
-				allRelatedContacts = await ContactService.getAllRelatedContacts(primaryContact.id);
+				allRelatedContacts = await ContactService.getAllRelatedContacts(
+					primaryContact.id,
+				);
 			} else {
-				primaryContact = await ContactService.findPrimaryContact(existingContact);
-				allRelatedContacts = await ContactService.getAllRelatedContacts(primaryContact.id);
+				primaryContact =
+					await ContactService.findPrimaryContact(existingContact);
+				allRelatedContacts = await ContactService.getAllRelatedContacts(
+					primaryContact.id,
+				);
 			}
 		} else {
-			primaryContact = await ContactService.mergeContacts(existingContacts, email, phoneNumber);
-			allRelatedContacts = await ContactService.getAllRelatedContacts(primaryContact.id);
+			primaryContact = await ContactService.mergeContacts(
+				existingContacts,
+				email,
+				phoneNumber,
+			);
+			allRelatedContacts = await ContactService.getAllRelatedContacts(
+				primaryContact.id,
+			);
 		}
 
-		return ContactService.buildConsolidatedResponse(primaryContact, allRelatedContacts);
+		return ContactService.buildConsolidatedResponse(
+			primaryContact,
+			allRelatedContacts,
+		);
 	},
 
-	async findExistingContacts(email?: string, phoneNumber?: string): Promise<Contact[]> {
+	async findExistingContacts(
+		email?: string,
+		phoneNumber?: string,
+	): Promise<Contact[]> {
 		return await db
 			.select()
 			.from(contacts)
@@ -58,7 +93,10 @@ export const ContactService = {
 			);
 	},
 
-	async createNewPrimaryContact(email?: string, phoneNumber?: string): Promise<Contact> {
+	async createNewPrimaryContact(
+		email?: string,
+		phoneNumber?: string,
+	): Promise<Contact> {
 		const [newContact] = await db
 			.insert(contacts)
 			.values({
@@ -72,14 +110,22 @@ export const ContactService = {
 		return newContact;
 	},
 
-	needsSecondaryContact(existingContact: Contact, email?: string, phoneNumber?: string): boolean {
+	needsSecondaryContact(
+		existingContact: Contact,
+		email?: string,
+		phoneNumber?: string,
+	): boolean {
 		return (
 			(email !== undefined && existingContact.email !== email) ||
 			(phoneNumber !== undefined && existingContact.phoneNumber !== phoneNumber)
 		);
 	},
 
-	async createSecondaryContact(email?: string, phoneNumber?: string, primaryContactId?: number): Promise<Contact> {
+	async createSecondaryContact(
+		email?: string,
+		phoneNumber?: string,
+		primaryContactId?: number,
+	): Promise<Contact> {
 		const [newSecondaryContact] = await db
 			.insert(contacts)
 			.values({
@@ -99,7 +145,10 @@ export const ContactService = {
 		}
 
 		if (contact.linkedId) {
-			const [primaryContact] = await db.select().from(contacts).where(eq(contacts.id, contact.linkedId));
+			const [primaryContact] = await db
+				.select()
+				.from(contacts)
+				.where(eq(contacts.id, contact.linkedId));
 			return primaryContact;
 		}
 
@@ -111,26 +160,51 @@ export const ContactService = {
 			.select()
 			.from(contacts)
 			.where(
-				and(isNull(contacts.deletedAt), or(eq(contacts.id, primaryContactId), eq(contacts.linkedId, primaryContactId))),
+				and(
+					isNull(contacts.deletedAt),
+					or(
+						eq(contacts.id, primaryContactId),
+						eq(contacts.linkedId, primaryContactId),
+					),
+				),
 			);
 
 		return allContacts;
 	},
 
-	async mergeContacts(existingContacts: Contact[], email?: string, phoneNumber?: string): Promise<Contact> {
+	async mergeContacts(
+		existingContacts: Contact[],
+		email?: string,
+		phoneNumber?: string,
+	): Promise<Contact> {
 		const oldestContact = existingContacts.reduce((oldest, current) =>
-			new Date(oldest.createdAt) < new Date(current.createdAt) ? oldest : current,
+			new Date(oldest.createdAt) < new Date(current.createdAt)
+				? oldest
+				: current,
 		);
 
-		await ContactService.updateContactsToSecondary(existingContacts, oldestContact);
+		await ContactService.updateContactsToSecondary(
+			existingContacts,
+			oldestContact,
+		);
 
-		await ContactService.createSecondaryContactIfNeeded(existingContacts, oldestContact.id, email, phoneNumber);
+		await ContactService.createSecondaryContactIfNeeded(
+			existingContacts,
+			oldestContact.id,
+			email,
+			phoneNumber,
+		);
 
 		return oldestContact;
 	},
 
-	async updateContactsToSecondary(existingContacts: Contact[], primaryContact: Contact): Promise<void> {
-		const contactsToUpdate = existingContacts.filter((c) => c.id !== primaryContact.id);
+	async updateContactsToSecondary(
+		existingContacts: Contact[],
+		primaryContact: Contact,
+	): Promise<void> {
+		const contactsToUpdate = existingContacts.filter(
+			(c) => c.id !== primaryContact.id,
+		);
 
 		for (const contact of contactsToUpdate) {
 			await db
@@ -152,29 +226,74 @@ export const ContactService = {
 	): Promise<void> {
 		const hasNewInfo =
 			(email && !existingContacts.some((c) => c.email === email)) ||
-			(phoneNumber && !existingContacts.some((c) => c.phoneNumber === phoneNumber));
+			(phoneNumber &&
+				!existingContacts.some((c) => c.phoneNumber === phoneNumber));
 
 		if (hasNewInfo) {
-			await ContactService.createSecondaryContact(email, phoneNumber, primaryContactId);
+			await ContactService.createSecondaryContact(
+				email,
+				phoneNumber,
+				primaryContactId,
+			);
 		}
 	},
 
-	buildConsolidatedResponse(primaryContact: Contact, allContacts: Contact[]): ConsolidatedContact {
+	buildConsolidatedResponse(
+		primaryContact: Contact,
+		allContacts: Contact[],
+	): ConsolidatedContact {
 		const emails = Array.from(
-			new Set(allContacts.map((c) => c.email).filter((email): email is string => email !== null)),
+			new Set(
+				allContacts
+					.map((c) => c.email)
+					.filter((email): email is string => email !== null),
+			),
 		);
 
 		const phoneNumbers = Array.from(
-			new Set(allContacts.map((c) => c.phoneNumber).filter((phone): phone is string => phone !== null)),
+			new Set(
+				allContacts
+					.map((c) => c.phoneNumber)
+					.filter((phone): phone is string => phone !== null),
+			),
 		);
 
-		const secondaryContactIds = allContacts.filter((c) => c.linkPrecedence === "secondary").map((c) => c.id);
+		const secondaryContactIds = allContacts
+			.filter((c) => c.linkPrecedence === "secondary")
+			.map((c) => c.id);
 
 		return {
 			primaryContatctId: primaryContact.id,
 			emails,
 			phoneNumbers,
 			secondaryContactIds,
+		};
+	},
+
+	async getPaginatedContacts(page: number, limit: number) {
+		const offset = (page - 1) * limit;
+
+		const [totalCount] = await db
+			.select({ count: count() })
+			.from(contacts)
+			.where(isNull(contacts.deletedAt));
+
+		const allContacts = await db
+			.select()
+			.from(contacts)
+			.where(isNull(contacts.deletedAt))
+			.orderBy(desc(contacts.createdAt))
+			.limit(limit)
+			.offset(offset);
+
+		return {
+			contacts: allContacts,
+			pagination: {
+				total: Number(totalCount.count),
+				page,
+				limit,
+				totalPages: Math.ceil(Number(totalCount.count) / limit),
+			},
 		};
 	},
 };

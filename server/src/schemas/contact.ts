@@ -19,5 +19,11 @@ export const identifyResponseSchema = z.object({
 	}),
 });
 
+export const paginationQuerySchema = z.object({
+	page: z.string().transform(Number).default("1"),
+	limit: z.string().transform(Number).default("10"),
+});
+
 export type IdentifyRequest = z.infer<typeof identifyRequestSchema>;
 export type IdentifyResponse = z.infer<typeof identifyResponseSchema>;
+export type PaginationQuery = z.infer<typeof paginationQuerySchema>;

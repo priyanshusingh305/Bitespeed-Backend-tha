@@ -5,7 +5,7 @@ const app = express();
 
 app.use(express.json());
 
-app.use("/identify", identifyRoutes);
+app.use("/", identifyRoutes);
 
 app.post("/test", (req, res) => {
 	console.log("Test route hit", req.body);
