@@ -24,6 +24,9 @@ app.use(
 app.use(express.json());
 
 app.use("/", identifyRoutes);
+app.get("/", (req, res) => {
+	res.status(200).json({ message: "Welcome to the Identify API" });
+});
 
 app.post("/test", (req, res) => {
 	console.log("Test route hit", req.body);
