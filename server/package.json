@@ -32,8 +32,10 @@
   },
   "dependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@types/dotenv": "^8.2.3",
     "@types/pg": "^8.15.4",
     "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
     "drizzle-orm": "^0.44.1",
     "helmet": "^8.1.0",
     "pg": "^8.16.0",
