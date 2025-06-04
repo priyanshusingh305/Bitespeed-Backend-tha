@@ -1,7 +1,25 @@
 import express from "express";
 import identifyRoutes from "./routes/index";
+import cors from "cors";
+import helmet from "helmet";
 
+// Initialize express app
 const app = express();
+
+app.use(
+	helmet({
+		contentSecurityPolicy: false,
+	}),
+);
+
+// Configure CORS
+app.use(
+	cors({
+		origin: "*", // Allow all origins
+		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+		allowedHeaders: ["Content-Type", "Authorization"],
+	}),
+);
 
 app.use(express.json());
 
