@@ -1,5 +1,5 @@
 import express from "express";
-import { identifyContact } from "./identify";
+import identifyContact from "./contact";
 
 const router = express.Router();
 
