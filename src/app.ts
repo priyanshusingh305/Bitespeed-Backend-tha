@@ -1,25 +1,17 @@
-import express from 'express';
+import express from "express";
 // import itemRoutes from './routes/itemRoutes';
+import identifyRoutes from "./routes/index";
 // import { errorHandler } from './middlewares/errorHandler';
 
 const app = express();
 
 app.use(express.json());
 
-// Routes
-// app.use('/api/items', itemRoutes);
+app.use("/identify", identifyRoutes);
 
-// Global error handler (should be after routes)
-// app.use(errorHandler);
-
-// Health check route
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.post("/test", (req, res) => {
+	console.log("Test route hit", req.body);
+	res.status(200).json({ message: "Test successful" });
 });
-// / route 
-app.get('/', (req, res) => {
-  res.status(200).send('Welcome to the API');
-});
-
 
 export default app;
